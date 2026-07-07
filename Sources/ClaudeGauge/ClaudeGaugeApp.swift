@@ -29,20 +29,14 @@ struct ClaudeGaugeApp: App {
         .menuBarExtraStyle(.window)
     }
 
+    // Menu bar shows only the session (5h) meter; everything else lives in the popover.
     private var labelText: String {
-        var parts: [String] = []
         switch store.remote {
-        case .ok:
-            if let l = store.limits {
-                parts.append("Se \(Gauge.dots(l.sessionPercent / 100)) \(Countdown.short(to: l.sessionResetsAt))")
-                parts.append("Wk \(Gauge.dots(l.weeklyPercent / 100)) \(Countdown.short(to: l.weeklyResetsAt))")
-            }
-        case .needsLogin: parts.append("log in")
-        case .loading:    parts.append("…")
-        case .error:      parts.append("!")
+        case .ok:         return store.limits.map { Gauge.dots($0.sessionPercent / 100) } ?? "…"
+        case .loading:    return "…"
+        case .needsLogin: return "log in"
+        case .error:      return "!"
         }
-        if let t = store.token { parts.append("Tk \(Gauge.dots(t.fraction)) \(t.percent)%") }
-        return "Claude " + parts.joined(separator: "  ")
     }
 }
 
