@@ -73,6 +73,13 @@ struct MenuContentView: View {
 
             Divider()
 
+            Toggle("Launch at login", isOn: Binding(
+                get: { LoginItem.enabled },
+                set: { LoginItem.set($0) }
+            ))
+            .toggleStyle(.checkbox)
+            .font(.caption)
+
             HStack(spacing: 18) {
                 IconButton(symbol: "arrow.clockwise", help: "Refresh") {
                     store.refreshRemote()

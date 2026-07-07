@@ -1,11 +1,32 @@
 # ClaudeGauge
 
-A macOS menu bar app that shows your Claude usage limits at a glance:
-**session (5h) limit, weekly limit, and local context/token usage** — with
-reset countdowns. Inspired by the Claudemeter VS Code extension, rebuilt as a
-native Swift menu bar app.
+A tiny macOS menu bar app that shows your Claude usage limits at a glance —
+**5-hour session** and **weekly** limits with reset countdowns — so you never
+get surprised by a limit you didn't see coming.
 
-> Status: **shipped v0.1.0** — all phases complete. Install via Homebrew below.
+Unofficial, personal tool. Not affiliated with Anthropic. Inspired by the
+[Claudemeter](https://github.com/hyperi-io/claudemeter) VS Code extension,
+rebuilt as a native Swift menu bar app with zero third-party dependencies.
+
+---
+
+## What it shows
+
+**Menu bar** — only the session (5h) meter, a compact five-dot gauge:
+
+```
+●●○○○
+```
+
+**Popover** (click the meter) — the full picture:
+
+- **Session (5h)** — utilization % + time to reset
+- **Weekly** — utilization % + time to reset
+- **Weekly (Opus)** — shown only on plans that have a separate Opus weekly limit
+- Colored bars: green < 75 %, yellow 75–90 %, red ≥ 90 %
+- A spinning-arrows indicator while a refresh is in flight (old numbers stay put)
+- **Launch at login** toggle
+- Icon buttons: Refresh · Log in / Log out · Quit
 
 ---
 
@@ -15,154 +36,123 @@ native Swift menu bar app.
 brew install --cask araidz/tap/claudegauge
 ```
 
-Lives in the menu bar (no Dock icon). Open the menu → **Log in…** to authorize
-with your Claude account (a WebKit window opens to claude.ai); the `sessionKey`
-cookie is stored in your Keychain. Session + weekly limits refresh every 5 min.
+It lives in the menu bar (no Dock icon). Open the menu → **Log in…**, sign in
+with your normal Claude account in the window that appears, and the gauges
+populate. Limits then auto-refresh every 5 minutes.
 
-Build from source instead: `swift build -c release && Scripts/bundle.sh`.
-Dev self-check (run against the SwiftPM binary, not the bundled app):
-`swift run ClaudeGauge --selftest`.
-
----
-
-
-## Goal
-
-The menu bar shows **only the session (5h) meter** — a compact five-dot gauge,
-nothing else:
-
-```
-●●○○○
-```
-
-Clicking it opens the detail popover with everything:
-
-- **Session (5h)** — utilization % + time to reset
-- **Weekly** — utilization % + time to reset (plus Opus-weekly when present)
-- account state, last-refresh, and log in / log out.
+> Ad-hoc signed, not Apple-notarized. The cask strips the quarantine attribute
+> on install so Gatekeeper doesn't block first launch.
 
 ---
 
-## Data sources (the crux)
+## How it works
 
-The **session + weekly limits** need an authenticated call to Claude.ai's
-private API.
+Two steps, both against Claude.ai's private (undocumented) API using your
+browser session — **no developer API key, no billing**. A `$20` Pro
+subscription is enough.
 
-### Session + weekly limits — remote, needs auth
+1. **Login** — a native `WKWebView` window opens claude.ai. After you sign in,
+   the `sessionKey` cookie is captured and stored in the macOS **Keychain**.
+   The Claude Code CLI's OAuth token can't be reused — its scopes don't cover
+   the usage endpoints, so a browser session is required.
+2. **Fetch** — `GET /api/bootstrap` resolves your organization id, then
+   `GET /api/organizations/{id}/usage` returns `five_hour` / `seven_day` /
+   `seven_day_opus` (`utilization` 0–100, ISO-8601 `resets_at`). A `401/403`
+   with an expired-session marker clears the cookie and re-prompts login.
 
-- Undocumented **Claude.ai usage API** (same endpoints Claudemeter uses).
-- Auth is a browser **`sessionKey` cookie** for `.claude.ai`, captured via a
-  one-time login. The Claude Code CLI's OAuth token does **not** work — wrong
-  scopes (`user:inference`, `user:profile`) don't cover usage/billing.
-- Exact endpoint paths are undocumented and change without notice. **Reference
-  the open-source Claudemeter repo** (`github.com/hyperi-io/claudemeter`) for
-  the current paths, cookie handling, and the `/api/bootstrap` capabilities
-  call, rather than guessing. Keep every remote call isolated in one file so a
-  breakage is a one-file fix.
-
-### Account info
-
-- `~/.claude.json` — plan / account metadata.
-- **macOS Keychain** holds the CLI credentials (service `Claude Code-credentials`)
-  — note: NOT the `.credentials.json` file the Claudemeter README assumes. Only
-  matters if we cross-check that the logged-in browser account matches the CLI
-  account (optional for v1).
-
----
-
-## Auth approach
-
-Recommended: **embedded `WKWebView` login** (native WebKit) instead of shipping
-a browser driver.
-
-1. Open a `WKWebView` window pointed at the Claude.ai login.
-2. User logs in (Google / email / Cloudflare check) inside it.
-3. Read the `sessionKey` cookie from `WKWebsiteDataStore.httpCookieStore`.
-4. Persist it in the **macOS Keychain**; close the window.
-5. All later fetches use `URLSession` with that cookie — no browser.
-
-Claudemeter uses Playwright because a VS Code extension can't embed WebKit
-cleanly; a native Mac app can, so we skip that dependency entirely.
-
-**On expiry / 401:** clear the stored cookie, surface a "Re-login" action in the
-menu, re-open the `WKWebView`.
+Refresh: a 5-minute timer plus the manual Refresh button. During a refresh the
+last-fetched values stay on screen; only the very first load shows a placeholder.
 
 ---
 
 ## Architecture
 
-- **SwiftUI `MenuBarExtra`** (macOS 13+), `.menuBarExtraStyle(.window)` for a
-  rich popover.
-- **`LSUIElement = true`** — menu bar agent, no Dock icon.
-- **No third-party dependencies** — SwiftUI, WebKit, Security (Keychain), and
-  Foundation `URLSession` cover everything.
-- Refresh: a `Timer` re-fetches the remote limits every ~5 min.
+- **SwiftUI `MenuBarExtra`** (macOS 13+), `.menuBarExtraStyle(.window)`.
+- Runs as a menu bar agent (`LSUIElement` in the bundle / `.accessory` policy).
+- **Zero third-party dependencies** — SwiftUI, WebKit, Security (Keychain),
+  ServiceManagement (launch-at-login), and Foundation `URLSession`.
 
 ```
-MenuBarExtra (label + popover)
+MenuBarExtra (dots label + popover)
         │
-   UsageStore (ObservableObject)  ← timers, holds current state
-    ├── ClaudeAPI     → session + weekly limits (URLSession + cookie)
-    └── Auth/Keychain → WKWebView login + sessionKey storage
+   UsageStore (ObservableObject)  ← 5-min timer, holds state
+    ├── ClaudeAPI     → session + weekly limits (URLSession + sessionKey cookie)
+    └── Auth/Keychain → WKWebView login + cookie storage
+   LoginItem          → launch-at-login (SMAppService)
 ```
 
----
-
-## Project structure
+### Project structure
 
 ```
 ClaudeGauge/
-├── README.md                     # this plan
+├── README.md
 ├── .gitignore
-├── Package.swift                 # SwiftPM manifest (macOS 13+)
-└── Sources/
-    └── ClaudeGauge/
-        ├── ClaudeGaugeApp.swift  # @main, session-meter label + popover + login   [done]
-        ├── SelfTest.swift            # offline --selftest assertions                  [done]
-        ├── Models/
-        │   └── Usage.swift           # LimitUsage, Countdown                        [done]
-        ├── Services/
-        │   ├── ClaudeAPI.swift       # bootstrap + /usage fetch (session/weekly)    [done]
-        │   ├── Auth.swift            # WKWebView login -> sessionKey                [done]
-        │   └── Keychain.swift        # generic-password Security wrapper            [done]
-        └── ViewModel/
-            └── UsageStore.swift      # state + remote(5m) refresh timer             [done]
+├── Package.swift                 # SwiftPM manifest (macOS 13+, no deps)
+├── Scripts/bundle.sh             # build .app + Info.plist + ad-hoc sign
+└── Sources/ClaudeGauge/
+    ├── ClaudeGaugeApp.swift      # @main, dots label, popover, Gauge helpers
+    ├── SelfTest.swift            # offline --selftest assertions
+    ├── Models/
+    │   └── Usage.swift           # LimitUsage, Countdown
+    ├── Services/
+    │   ├── ClaudeAPI.swift       # bootstrap + /usage fetch
+    │   ├── Auth.swift            # WKWebView login → sessionKey
+    │   ├── Keychain.swift        # generic-password wrapper
+    │   └── LoginItem.swift       # launch-at-login (SMAppService)
+    └── ViewModel/
+        └── UsageStore.swift      # state + 5-min refresh timer
 ```
 
-Built with **SwiftPM** (`swift build` / `swift run`); Xcode opens `Package.swift`
-directly. No `.xcodeproj`, `Info.plist`, or entitlements file — a non-sandboxed
-personal tool gets Keychain + network access without them, and the Dock icon is
-hidden via `NSApplication.setActivationPolicy(.accessory)` instead of
-`LSUIElement`. (Revisit only if we ever ship a signed, sandboxed `.app`.)
+---
+
+## Build from source
+
+```sh
+swift build -c release      # compile
+Scripts/bundle.sh           # produce ClaudeGauge.app (ad-hoc signed)
+swift run ClaudeGauge --selftest   # offline decode/format/countdown checks
+```
+
+Xcode opens `Package.swift` directly. No `.xcodeproj` needed.
+
+Releasing: `Scripts/bundle.sh <version>` → zip → GitHub release → bump the cask
+in `araidz/homebrew-tap` (version + sha256) → `brew upgrade --cask claudegauge`.
 
 ---
 
-## Build phases
+## Areas for improvement
 
-Ship the safe local part first, then layer on auth and remote limits.
+Deliberately left out to keep it lean. Reach for these only when actually wanted:
 
-1. **Scaffold** ✅ *done* — `MenuBarExtra` app showing static text, running as a
-   menu bar agent via `.accessory` policy (no Dock icon). Confirms the shell works.
-2. **Local token meter** — *removed.* Shipped in an early version (JSONL parse +
-   `Tk` gauge), later dropped as unwanted; local-token code deleted entirely.
-3. **Auth** ✅ *done* — `WKWebView` login window (`Auth.swift`) captures the
-   `sessionKey` cookie once off the login page, persisted via `Keychain.swift`.
-4. **Remote limits** ✅ *done* — `ClaudeAPI.swift` resolves orgId via `/api/bootstrap`,
-   fetches `/usage`; `Se`/`Wk` gauges + reset countdowns render. 401/expired → re-login.
-5. **Polish** ✅ *done* — remote(5m) refresh timer, green/yellow/red
-   threshold colors in the popover, per-limit detail, login/logout, expired-cookie UX.
-   Verify parsing/formatting offline with `swift run ClaudeGauge --selftest`.
+- **Threshold notifications** — a `UNUserNotification` when session/weekly cross
+  ~80 % and ~95 %, fired once per tier per window (re-armed on reset). Turns it
+  from "a thing I check" into "a thing that tells me." *(Considered, skipped for
+  now — the dots are enough at a glance.)*
+- **Critical glyph in the menu bar** — prepend a `⚠` to the dots when session
+  ≥ 90 %, so the danger state reads without opening the popover.
+- **Signing + notarization** — a Developer ID cert would remove the ad-hoc
+  signature and the cask's quarantine-strip workaround.
+- **orgId caching** — cache the resolved org id so each poll makes one request
+  instead of two (marginal at a 5-min cadence).
+- **Tighter login capture** — validate the captured `sessionKey` against
+  `/api/bootstrap` before saving, instead of the "off the login page" heuristic
+  (currently self-correcting: a bad cookie just 401s and re-prompts).
+- **Configurable thresholds / refresh interval** — a small settings surface;
+  currently hardcoded (75/90 colors, 5-min refresh).
+- **Account-switch detection** — watch `~/.claude/.credentials.json` /
+  `~/.claude.json` and re-prompt login when the CLI account changes.
+- **Usage history** — a sparkline of utilization over time (needs local storage).
+- **Happy-hour / peak-window indicator** — highlight Anthropic's off-peak window.
+
+## Known limitations
+
+- The usage endpoints are **undocumented and can change without notice**. All
+  remote calls are isolated in `ClaudeAPI.swift`, so a break is a one-file fix —
+  cross-check against the Claudemeter source when it happens.
+- Session cookies expire; you'll re-login occasionally (there's a button).
+- Context-window / token defaults assume a Pro plan where relevant.
 
 ---
 
-## Risks / open questions
-
-- **Undocumented API drift** — endpoints can change silently. Isolate in
-  `ClaudeAPI.swift`; cross-check against the Claudemeter source when it breaks.
-- **Cookie expiry** — needs a clean re-login path (covered above).
-- **Endpoint paths** — not hard-coded here on purpose; pull the current ones
-  from the Claudemeter repo before writing `ClaudeAPI.swift`.
-- **Account matching** — cross-checking browser vs CLI account is optional for
-  v1; skip it and just use whoever logs in.
-- **Terms** — this is unofficial and hits a private API, same footing as
-  Claudemeter. Personal-use tool.
+*Personal use. Uses a private API with your own session — no credentials leave
+your machine (the cookie lives only in your Keychain).*
