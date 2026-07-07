@@ -108,24 +108,29 @@ MenuBarExtra (label + popover)
 ClaudeGauge/
 ├── README.md                     # this plan
 ├── .gitignore
-├── ClaudeGauge.xcodeproj/        # created in Xcode
-└── ClaudeGauge/
-    ├── ClaudeGaugeApp.swift      # @main, MenuBarExtra scene
-    ├── Info.plist                # LSUIElement = true
-    ├── ClaudeGauge.entitlements  # network client + keychain access
-    ├── Models/
-    │   └── Usage.swift           # SessionLimit, WeeklyLimit, TokenUsage
-    ├── Services/
-    │   ├── ClaudeAPI.swift       # remote session/weekly fetch
-    │   ├── LocalUsage.swift      # JSONL parser for context tokens
-    │   ├── Auth.swift            # WKWebView login → sessionKey
-    │   └── Keychain.swift        # tiny Security wrapper
-    ├── ViewModel/
-    │   └── UsageStore.swift      # ObservableObject + refresh timers
-    └── Views/
-        ├── MenuBarLabel.swift    # status-bar text / gauges
-        └── MenuContentView.swift # dropdown detail popover
+├── Package.swift                 # SwiftPM manifest (macOS 13+)
+└── Sources/
+    └── ClaudeGauge/
+        ├── ClaudeGaugeApp.swift  # @main, MenuBarExtra + accessory policy   [Phase 1 done]
+        ├── Models/
+        │   └── Usage.swift           # SessionLimit, WeeklyLimit, TokenUsage
+        ├── Services/
+        │   ├── ClaudeAPI.swift       # remote session/weekly fetch
+        │   ├── LocalUsage.swift      # JSONL parser for context tokens
+        │   ├── Auth.swift            # WKWebView login -> sessionKey
+        │   └── Keychain.swift        # tiny Security wrapper
+        ├── ViewModel/
+        │   └── UsageStore.swift      # ObservableObject + refresh timers
+        └── Views/
+            ├── MenuBarLabel.swift    # status-bar text / gauges
+            └── MenuContentView.swift # dropdown detail popover
 ```
+
+Built with **SwiftPM** (`swift build` / `swift run`); Xcode opens `Package.swift`
+directly. No `.xcodeproj`, `Info.plist`, or entitlements file — a non-sandboxed
+personal tool gets Keychain + network access without them, and the Dock icon is
+hidden via `NSApplication.setActivationPolicy(.accessory)` instead of
+`LSUIElement`. (Revisit only if we ever ship a signed, sandboxed `.app`.)
 
 ---
 
@@ -133,8 +138,8 @@ ClaudeGauge/
 
 Ship the safe local part first, then layer on auth and remote limits.
 
-1. **Scaffold** — `MenuBarExtra` app showing static text. `LSUIElement`, no Dock
-   icon. Confirms the shell works.
+1. **Scaffold** ✅ *done* — `MenuBarExtra` app showing static text, running as a
+   menu bar agent via `.accessory` policy (no Dock icon). Confirms the shell works.
 2. **Local token meter** — `LocalUsage.swift` parses JSONL, `Tk` gauge renders.
    No auth, no network. Fully useful on its own.
 3. **Auth** — `WKWebView` login, capture `sessionKey`, store in Keychain.
