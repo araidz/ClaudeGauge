@@ -5,9 +5,27 @@ A macOS menu bar app that shows your Claude usage limits at a glance:
 reset countdowns. Inspired by the Claudemeter VS Code extension, rebuilt as a
 native Swift menu bar app.
 
-> Status: **planning only.** No code yet. This README is the build plan.
+> Status: **shipped v0.1.0** — all phases complete. Install via Homebrew below.
 
 ---
+
+## Install
+
+```sh
+brew install --cask araidz/tap/claudegauge
+```
+
+Lives in the menu bar (no Dock icon). Open the menu → **Log in…** to authorize
+with your Claude account (a WebKit window opens to claude.ai); the `sessionKey`
+cookie is stored in your Keychain. Session + weekly limits then refresh every
+5 min; local context tokens every 10 s.
+
+Build from source instead: `swift build -c release && Scripts/bundle.sh`.
+Dev self-checks (run against the SwiftPM binary, not the bundled app):
+`swift run ClaudeGauge --selftest` and `swift run ClaudeGauge --dump --all`.
+
+---
+
 
 ## Goal
 
