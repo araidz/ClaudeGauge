@@ -65,20 +65,13 @@ struct MenuContentView: View {
                 }
             } else {
                 switch store.remote {
-                case .needsLogin: Text("Not logged in").font(.caption).foregroundStyle(.secondary)
+                case .needsLogin: Button("Log in to Claude…") { store.logIn() }
                 case .error(let msg): Text("Error: \(msg)").font(.caption).foregroundStyle(.red)
                 default: Text("Loading limits…").font(.caption).foregroundStyle(.secondary)
                 }
             }
 
             Divider()
-
-            Toggle("Launch at login", isOn: Binding(
-                get: { LoginItem.enabled },
-                set: { LoginItem.set($0) }
-            ))
-            .toggleStyle(.checkbox)
-            .font(.caption)
 
             HStack(spacing: 18) {
                 IconButton(symbol: "arrow.clockwise", help: "Refresh") {
@@ -88,12 +81,21 @@ struct MenuContentView: View {
 
                 Spacer()
 
-                if case .needsLogin = store.remote {
-                    IconButton(symbol: "person.crop.circle.badge.plus", help: "Log in") { store.logIn() }
-                } else {
-                    IconButton(symbol: "rectangle.portrait.and.arrow.right", help: "Log out") { store.logOut() }
+                Menu {
+                    Toggle("Launch at login", isOn: Binding(
+                        get: { LoginItem.enabled },
+                        set: { LoginItem.set($0) }
+                    ))
+                    if store.remote != .needsLogin {
+                        Button("Log out") { store.logOut() }
+                    }
+                    Divider()
+                    Button("Quit ClaudeGauge") { NSApplication.shared.terminate(nil) }
+                } label: {
+                    Image(systemName: "gearshape")
                 }
-                IconButton(symbol: "power", help: "Quit ClaudeGauge") { NSApplication.shared.terminate(nil) }
+                .menuIndicator(.hidden)
+                .fixedSize()
             }
             .font(.system(size: 15))
         }

@@ -25,8 +25,8 @@ rebuilt as a native Swift menu bar app with zero third-party dependencies.
 - **Weekly (Opus)** — shown only on plans that have a separate Opus weekly limit
 - Colored bars: green < 75 %, yellow 75–90 %, red ≥ 90 %
 - A spinning-arrows indicator while a refresh is in flight (old numbers stay put)
-- **Launch at login** toggle
-- Icon buttons: Refresh · Log in / Log out · Quit
+- **Refresh** button, and a **gear menu** holding Launch-at-login · Log out · Quit
+- **Log in to Claude…** button when signed out
 
 ---
 
@@ -88,7 +88,10 @@ ClaudeGauge/
 ├── README.md
 ├── .gitignore
 ├── Package.swift                 # SwiftPM manifest (macOS 13+, no deps)
-├── Scripts/bundle.sh             # build .app + Info.plist + ad-hoc sign
+├── Assets/AppIcon.png            # source app icon (five-dot meter, terracotta)
+├── Scripts/
+│   ├── bundle.sh                 # build .app + Info.plist + icns + ad-hoc sign
+│   └── make-icon.swift           # render Assets/AppIcon.png natively
 └── Sources/ClaudeGauge/
     ├── ClaudeGaugeApp.swift      # @main, dots label, popover, Gauge helpers
     ├── SelfTest.swift            # offline --selftest assertions
