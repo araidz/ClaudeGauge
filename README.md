@@ -111,19 +111,16 @@ ClaudeGauge/
 ├── Package.swift                 # SwiftPM manifest (macOS 13+)
 └── Sources/
     └── ClaudeGauge/
-        ├── ClaudeGaugeApp.swift  # @main, MenuBarExtra + accessory policy   [Phase 1 done]
+        ├── ClaudeGaugeApp.swift  # @main, MenuBarExtra + Tk gauge label + popover   [done]
         ├── Models/
-        │   └── Usage.swift           # SessionLimit, WeeklyLimit, TokenUsage
+        │   └── Usage.swift           # TokenUsage (context occupancy)               [done]
         ├── Services/
-        │   ├── ClaudeAPI.swift       # remote session/weekly fetch
-        │   ├── LocalUsage.swift      # JSONL parser for context tokens
-        │   ├── Auth.swift            # WKWebView login -> sessionKey
-        │   └── Keychain.swift        # tiny Security wrapper
-        ├── ViewModel/
-        │   └── UsageStore.swift      # ObservableObject + refresh timers
-        └── Views/
-            ├── MenuBarLabel.swift    # status-bar text / gauges
-            └── MenuContentView.swift # dropdown detail popover
+        │   ├── LocalUsage.swift      # JSONL parser for context tokens              [done]
+        │   ├── ClaudeAPI.swift       # remote session/weekly fetch                  (Phase 4)
+        │   ├── Auth.swift            # WKWebView login -> sessionKey                (Phase 3)
+        │   └── Keychain.swift        # tiny Security wrapper                        (Phase 3)
+        └── ViewModel/
+            └── UsageStore.swift      # ObservableObject + refresh timer             [done]
 ```
 
 Built with **SwiftPM** (`swift build` / `swift run`); Xcode opens `Package.swift`
@@ -140,8 +137,9 @@ Ship the safe local part first, then layer on auth and remote limits.
 
 1. **Scaffold** ✅ *done* — `MenuBarExtra` app showing static text, running as a
    menu bar agent via `.accessory` policy (no Dock icon). Confirms the shell works.
-2. **Local token meter** — `LocalUsage.swift` parses JSONL, `Tk` gauge renders.
-   No auth, no network. Fully useful on its own.
+2. **Local token meter** ✅ *done* — `LocalUsage.swift` parses JSONL for the active
+   session's context tokens, `Tk` gauge + detail popover render. No auth, no network.
+   Verify with `swift run ClaudeGauge --dump` (add `--all` to ignore the 30m live gate).
 3. **Auth** — `WKWebView` login, capture `sessionKey`, store in Keychain.
 4. **Remote limits** — `ClaudeAPI.swift` fetches session + weekly; `Se`/`Wk`
    gauges + reset countdowns. Handle 401 → re-login.
