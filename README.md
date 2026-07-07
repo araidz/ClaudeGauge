@@ -29,18 +29,19 @@ Dev self-checks (run against the SwiftPM binary, not the bundled app):
 
 ## Goal
 
-One menu bar item, refreshed on a timer, rendering something like:
+The menu bar shows **only the session (5h) meter** — a compact five-dot gauge,
+nothing else:
 
 ```
-Se ●●○○○ 1h 28m   Wk ●●○○○ 4d 17h   Tk ●○○○○ 12%
+●●○○○
 ```
 
-- `Se` — 5-hour session limit + time to reset
-- `Wk` — weekly limit + time to reset
-- `Tk` — current context/token usage of the active Claude Code session
+Clicking it opens the detail popover with everything:
 
-Click opens a detail popover (per-limit percentages, reset times, account,
-last-refresh, re-login button).
+- **Session (5h)** — utilization % + time to reset
+- **Weekly** — utilization % + time to reset (plus Opus-weekly when present)
+- **Context** — active Claude Code session's token usage vs its window
+- account state, last-refresh, and log in / log out.
 
 ---
 
