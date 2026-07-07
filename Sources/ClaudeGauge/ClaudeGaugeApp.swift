@@ -6,14 +6,6 @@ struct ClaudeGaugeApp: App {
 
     init() {
         let args = CommandLine.arguments
-        // `--dump [--all]` prints local context usage and exits (verifies the JSONL pipeline).
-        if args.contains("--dump") {
-            let maxAge = args.contains("--all") ? .infinity : LocalUsage.maxAge
-            let t = LocalUsage.current(maxAge: maxAge)
-            print(t.map { "Tk \($0.tokens)/\($0.window) (\($0.percent)%)  model=\($0.model)  session=\($0.sessionName)" }
-                ?? "no live session (nothing modified within \(Int(LocalUsage.maxAge / 60))m)")
-            exit(0)
-        }
         // `--selftest` runs offline assertions on parsing/formatting and exits.
         if args.contains("--selftest") { SelfTest.run(); exit(0) }
 
@@ -81,19 +73,9 @@ struct MenuContentView: View {
 
             Divider()
 
-            // Local context
-            if let t = store.token {
-                GaugeRow(title: "Context (\(t.model))", percent: t.fraction * 100,
-                         detail: "\(t.tokens.formatted()) / \(t.window.formatted()) · \(t.sessionName)")
-            } else {
-                Text("No active Claude Code session").font(.caption).foregroundStyle(.secondary)
-            }
-
-            Divider()
-
             HStack(spacing: 18) {
                 IconButton(symbol: "arrow.clockwise", help: "Refresh") {
-                    store.refreshLocal(); store.refreshRemote()
+                    store.refreshRemote()
                 }
                 .disabled(store.isFetching)
 

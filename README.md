@@ -17,12 +17,11 @@ brew install --cask araidz/tap/claudegauge
 
 Lives in the menu bar (no Dock icon). Open the menu → **Log in…** to authorize
 with your Claude account (a WebKit window opens to claude.ai); the `sessionKey`
-cookie is stored in your Keychain. Session + weekly limits then refresh every
-5 min; local context tokens every 10 s.
+cookie is stored in your Keychain. Session + weekly limits refresh every 5 min.
 
 Build from source instead: `swift build -c release && Scripts/bundle.sh`.
-Dev self-checks (run against the SwiftPM binary, not the bundled app):
-`swift run ClaudeGauge --selftest` and `swift run ClaudeGauge --dump --all`.
+Dev self-check (run against the SwiftPM binary, not the bundled app):
+`swift run ClaudeGauge --selftest`.
 
 ---
 
@@ -40,17 +39,16 @@ Clicking it opens the detail popover with everything:
 
 - **Session (5h)** — utilization % + time to reset
 - **Weekly** — utilization % + time to reset (plus Opus-weekly when present)
-- **Context** — active Claude Code session's token usage vs its window
 - account state, last-refresh, and log in / log out.
 
 ---
 
 ## Data sources (the crux)
 
-Two independent sources. The **session + weekly limits are the hard part** —
-they need an authenticated call to Claude.ai's private API.
+The **session + weekly limits** need an authenticated call to Claude.ai's
+private API.
 
-### 1. Session + weekly limits — remote, needs auth
+### Session + weekly limits — remote, needs auth
 
 - Undocumented **Claude.ai usage API** (same endpoints Claudemeter uses).
 - Auth is a browser **`sessionKey` cookie** for `.claude.ai`, captured via a
@@ -61,15 +59,6 @@ they need an authenticated call to Claude.ai's private API.
   the current paths, cookie handling, and the `/api/bootstrap` capabilities
   call, rather than guessing. Keep every remote call isolated in one file so a
   breakage is a one-file fix.
-
-### 2. Context / token usage — local, no auth
-
-- Parse `~/.claude/projects/**/*.jsonl` session logs. Each assistant turn has a
-  `usage` block (`input_tokens`, `output_tokens`, `cache_*`) plus `model`.
-- The active session = the most-recently-written `.jsonl` within a live window
-  (Claudemeter uses ~10 min live / ~30 min hard deck). Sum tokens, compare to
-  the context window (200K / 1M by model+plan) for the `Tk` gauge.
-- Fully offline, no login. Ship this first — it's the safe 80%.
 
 ### Account info
 
@@ -105,17 +94,15 @@ menu, re-open the `WKWebView`.
 - **SwiftUI `MenuBarExtra`** (macOS 13+), `.menuBarExtraStyle(.window)` for a
   rich popover.
 - **`LSUIElement = true`** — menu bar agent, no Dock icon.
-- **No third-party dependencies** — SwiftUI, WebKit, Security (Keychain),
-  Foundation `URLSession`, and `FileManager` cover everything.
-- Refresh: a `Timer` for the remote limits (default ~5 min); a lightweight
-  file-watch or short timer for local tokens (~10 s).
+- **No third-party dependencies** — SwiftUI, WebKit, Security (Keychain), and
+  Foundation `URLSession` cover everything.
+- Refresh: a `Timer` re-fetches the remote limits every ~5 min.
 
 ```
 MenuBarExtra (label + popover)
         │
    UsageStore (ObservableObject)  ← timers, holds current state
     ├── ClaudeAPI     → session + weekly limits (URLSession + cookie)
-    ├── LocalUsage    → context tokens (JSONL parser)
     └── Auth/Keychain → WKWebView login + sessionKey storage
 ```
 
@@ -130,17 +117,16 @@ ClaudeGauge/
 ├── Package.swift                 # SwiftPM manifest (macOS 13+)
 └── Sources/
     └── ClaudeGauge/
-        ├── ClaudeGaugeApp.swift  # @main, Se/Wk/Tk label + colored popover + login   [done]
+        ├── ClaudeGaugeApp.swift  # @main, session-meter label + popover + login   [done]
         ├── SelfTest.swift            # offline --selftest assertions                  [done]
         ├── Models/
-        │   └── Usage.swift           # TokenUsage, LimitUsage, Countdown             [done]
+        │   └── Usage.swift           # LimitUsage, Countdown                        [done]
         ├── Services/
-        │   ├── LocalUsage.swift      # JSONL parser for context tokens              [done]
         │   ├── ClaudeAPI.swift       # bootstrap + /usage fetch (session/weekly)    [done]
         │   ├── Auth.swift            # WKWebView login -> sessionKey                [done]
         │   └── Keychain.swift        # generic-password Security wrapper            [done]
         └── ViewModel/
-            └── UsageStore.swift      # state + local(10s)/remote(5m) timers         [done]
+            └── UsageStore.swift      # state + remote(5m) refresh timer             [done]
 ```
 
 Built with **SwiftPM** (`swift build` / `swift run`); Xcode opens `Package.swift`
@@ -157,14 +143,13 @@ Ship the safe local part first, then layer on auth and remote limits.
 
 1. **Scaffold** ✅ *done* — `MenuBarExtra` app showing static text, running as a
    menu bar agent via `.accessory` policy (no Dock icon). Confirms the shell works.
-2. **Local token meter** ✅ *done* — `LocalUsage.swift` parses JSONL for the active
-   session's context tokens, `Tk` gauge + detail popover render. No auth, no network.
-   Verify with `swift run ClaudeGauge --dump` (add `--all` to ignore the 30m live gate).
+2. **Local token meter** — *removed.* Shipped in an early version (JSONL parse +
+   `Tk` gauge), later dropped as unwanted; local-token code deleted entirely.
 3. **Auth** ✅ *done* — `WKWebView` login window (`Auth.swift`) captures the
    `sessionKey` cookie once off the login page, persisted via `Keychain.swift`.
 4. **Remote limits** ✅ *done* — `ClaudeAPI.swift` resolves orgId via `/api/bootstrap`,
    fetches `/usage`; `Se`/`Wk` gauges + reset countdowns render. 401/expired → re-login.
-5. **Polish** ✅ *done* — local(10s)/remote(5m) refresh timers, green/yellow/red
+5. **Polish** ✅ *done* — remote(5m) refresh timer, green/yellow/red
    threshold colors in the popover, per-limit detail, login/logout, expired-cookie UX.
    Verify parsing/formatting offline with `swift run ClaudeGauge --selftest`.
 

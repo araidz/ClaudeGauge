@@ -1,9 +1,7 @@
 import Foundation
 import Combine
 
-/// Holds all usage state and keeps it fresh.
-/// - Local context tokens: parsed from JSONL every `localInterval`.
-/// - Remote session/weekly limits: fetched from Claude.ai every `remoteInterval`.
+/// Holds usage state and refreshes the remote session/weekly limits on a timer.
 @MainActor
 final class UsageStore: ObservableObject {
     enum RemoteState: Equatable {
@@ -13,37 +11,22 @@ final class UsageStore: ObservableObject {
         case error(String)
     }
 
-    @Published private(set) var token: TokenUsage?     // local context
     @Published private(set) var limits: LimitUsage?    // remote session + weekly
     @Published private(set) var remote: RemoteState = .needsLogin
     @Published private(set) var isFetching = false   // a remote fetch is in flight
 
     private let login = LoginController()
-    private var localTimer: Timer?
     private var remoteTimer: Timer?
-    private let localInterval: TimeInterval
     private let remoteInterval: TimeInterval
 
-    init(localInterval: TimeInterval = 10, remoteInterval: TimeInterval = 300) {
-        self.localInterval = localInterval
+    init(remoteInterval: TimeInterval = 300) {
         self.remoteInterval = remoteInterval
 
-        refreshLocal()
         remote = (Auth.load()?.isExpired == false) ? .loading : .needsLogin
         refreshRemote()
 
-        localTimer = Timer.scheduledTimer(withTimeInterval: localInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshLocal() }
-        }
         remoteTimer = Timer.scheduledTimer(withTimeInterval: remoteInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshRemote() }
-        }
-    }
-
-    func refreshLocal() {
-        Task.detached(priority: .utility) {
-            let t = LocalUsage.current()
-            await MainActor.run { self.token = t }
         }
     }
 
