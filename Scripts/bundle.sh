@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${1:-0.1.6}"
+VERSION="${1:-0.1.7}"
 APP="ClaudeGauge.app"
 BID="io.github.araidz.claudegauge"
 

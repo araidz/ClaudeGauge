@@ -92,10 +92,12 @@ struct MenuContentView: View {
                     Divider()
                     Button("Quit ClaudeGauge") { NSApplication.shared.terminate(nil) }
                 } label: {
-                    Image(systemName: "gearshape")
+                    Image(systemName: "gearshape").contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .menuIndicator(.hidden)
                 .fixedSize()
+                .help("Options")
             }
             .font(.system(size: 15))
         }
