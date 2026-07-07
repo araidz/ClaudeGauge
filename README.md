@@ -111,16 +111,17 @@ ClaudeGauge/
 ├── Package.swift                 # SwiftPM manifest (macOS 13+)
 └── Sources/
     └── ClaudeGauge/
-        ├── ClaudeGaugeApp.swift  # @main, MenuBarExtra + Tk gauge label + popover   [done]
+        ├── ClaudeGaugeApp.swift  # @main, Se/Wk/Tk label + colored popover + login   [done]
+        ├── SelfTest.swift            # offline --selftest assertions                  [done]
         ├── Models/
-        │   └── Usage.swift           # TokenUsage (context occupancy)               [done]
+        │   └── Usage.swift           # TokenUsage, LimitUsage, Countdown             [done]
         ├── Services/
         │   ├── LocalUsage.swift      # JSONL parser for context tokens              [done]
-        │   ├── ClaudeAPI.swift       # remote session/weekly fetch                  (Phase 4)
-        │   ├── Auth.swift            # WKWebView login -> sessionKey                (Phase 3)
-        │   └── Keychain.swift        # tiny Security wrapper                        (Phase 3)
+        │   ├── ClaudeAPI.swift       # bootstrap + /usage fetch (session/weekly)    [done]
+        │   ├── Auth.swift            # WKWebView login -> sessionKey                [done]
+        │   └── Keychain.swift        # generic-password Security wrapper            [done]
         └── ViewModel/
-            └── UsageStore.swift      # ObservableObject + refresh timer             [done]
+            └── UsageStore.swift      # state + local(10s)/remote(5m) timers         [done]
 ```
 
 Built with **SwiftPM** (`swift build` / `swift run`); Xcode opens `Package.swift`
@@ -140,11 +141,13 @@ Ship the safe local part first, then layer on auth and remote limits.
 2. **Local token meter** ✅ *done* — `LocalUsage.swift` parses JSONL for the active
    session's context tokens, `Tk` gauge + detail popover render. No auth, no network.
    Verify with `swift run ClaudeGauge --dump` (add `--all` to ignore the 30m live gate).
-3. **Auth** — `WKWebView` login, capture `sessionKey`, store in Keychain.
-4. **Remote limits** — `ClaudeAPI.swift` fetches session + weekly; `Se`/`Wk`
-   gauges + reset countdowns. Handle 401 → re-login.
-5. **Polish** — refresh timers, color thresholds, detail popover, expired-cookie
-   UX. (Optional later: happy-hour indicator, context-rot tiers, service status.)
+3. **Auth** ✅ *done* — `WKWebView` login window (`Auth.swift`) captures the
+   `sessionKey` cookie once off the login page, persisted via `Keychain.swift`.
+4. **Remote limits** ✅ *done* — `ClaudeAPI.swift` resolves orgId via `/api/bootstrap`,
+   fetches `/usage`; `Se`/`Wk` gauges + reset countdowns render. 401/expired → re-login.
+5. **Polish** ✅ *done* — local(10s)/remote(5m) refresh timers, green/yellow/red
+   threshold colors in the popover, per-limit detail, login/logout, expired-cookie UX.
+   Verify parsing/formatting offline with `swift run ClaudeGauge --selftest`.
 
 ---
 
