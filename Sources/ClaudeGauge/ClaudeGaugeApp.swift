@@ -95,12 +95,11 @@ struct MenuContentView: View {
     }
 }
 
-/// One labeled meter: colored progress bar + percent + reset countdown / detail.
+/// One labeled meter: colored progress bar + percent + reset countdown.
 struct GaugeRow: View {
     let title: String
     let percent: Double
     var resetsAt: Date? = nil
-    var detail: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -115,9 +114,6 @@ struct GaugeRow: View {
             if let resetsAt {
                 Text("resets in \(Countdown.short(to: resetsAt))")
                     .font(.caption2).foregroundStyle(.secondary)
-            }
-            if let detail {
-                Text(detail).font(.caption2).foregroundStyle(.secondary)
             }
         }
     }

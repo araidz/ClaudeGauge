@@ -22,7 +22,7 @@ enum ClaudeAPI {
         return usage.toLimitUsage()
     }
 
-    static func resolveOrgId(sessionKey: String) async throws -> String {
+    private static func resolveOrgId(sessionKey: String) async throws -> String {
         let boot: Bootstrap = try await get("\(base)/api/bootstrap", sessionKey: sessionKey)
         guard let memberships = boot.account?.memberships, !memberships.isEmpty else { throw APIError.noOrg }
         // ponytail: personal accounts have one org; prefer a claude.ai-capable membership, else first.
@@ -56,7 +56,7 @@ enum ClaudeAPI {
     }
 
     // ISO8601 with or without fractional seconds.
-    static func parseDate(_ s: String?) -> Date? {
+    fileprivate static func parseDate(_ s: String?) -> Date? {
         guard let s else { return nil }
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -73,7 +73,6 @@ struct UsageResponse: Decodable {
     let five_hour: Limit?
     let seven_day: Limit?
     let seven_day_opus: Limit?
-    let seven_day_sonnet: Limit?
 
     func toLimitUsage() -> LimitUsage {
         LimitUsage(
@@ -88,7 +87,7 @@ struct UsageResponse: Decodable {
 }
 
 struct Bootstrap: Decodable {
-    struct Org: Decodable { let uuid: String?; let name: String?; let capabilities: [String]? }
+    struct Org: Decodable { let uuid: String?; let capabilities: [String]? }
     struct Membership: Decodable { let organization: Org? }
     struct Account: Decodable { let memberships: [Membership]? }
     let account: Account?

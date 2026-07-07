@@ -31,7 +31,7 @@ enum Auth {
 /// Presents a WKWebView window to claude.ai and captures the `sessionKey` cookie
 /// once the user has logged in. Native WebKit — no browser driver dependency.
 @MainActor
-final class LoginController: NSObject, WKHTTPCookieStoreObserver, WKNavigationDelegate {
+final class LoginController: NSObject, WKHTTPCookieStoreObserver {
     private var window: NSWindow?
     private var webView: WKWebView?
     private var onDone: ((Session?) -> Void)?
@@ -45,7 +45,6 @@ final class LoginController: NSObject, WKHTTPCookieStoreObserver, WKNavigationDe
         let config = WKWebViewConfiguration()
         config.applicationNameForUserAgent = "Version/17.0 Safari/605.1.15"
         let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 480, height: 680), configuration: config)
-        web.navigationDelegate = self
         config.websiteDataStore.httpCookieStore.add(self)
         web.load(URLRequest(url: URL(string: "https://claude.ai/login")!))
         self.webView = web

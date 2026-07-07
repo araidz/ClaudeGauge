@@ -1,9 +1,5 @@
 .DS_Store
-build/
 .build/
+.swiftpm/
 *.app/
 *.zip
-DerivedData/
-*.xcuserstate
-xcuserdata/
-.swiftpm/

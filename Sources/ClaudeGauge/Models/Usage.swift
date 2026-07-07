@@ -8,7 +8,6 @@ struct LimitUsage {
     var weeklyResetsAt: Date?
     var opusWeeklyPercent: Double?    // Opus-specific weekly (nil on plans without it)
     var opusWeeklyResetsAt: Date?
-    var fetched: Date = Date()
 }
 
 enum Countdown {

@@ -8,8 +8,7 @@ enum SelfTest {
         let usageJSON = """
         {"five_hour":{"utilization":42.5,"resets_at":"2026-07-07T18:30:00.000000Z"},
          "seven_day":{"utilization":88,"resets_at":"2026-07-11T00:00:00Z"},
-         "seven_day_opus":{"utilization":12,"resets_at":null},
-         "seven_day_sonnet":{"utilization":null,"resets_at":null}}
+         "seven_day_opus":{"utilization":12,"resets_at":null}}
         """
         let usage = try! JSONDecoder().decode(UsageResponse.self, from: Data(usageJSON.utf8))
         let limits = usage.toLimitUsage()
