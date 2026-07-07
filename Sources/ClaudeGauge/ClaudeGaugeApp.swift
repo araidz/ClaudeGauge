@@ -97,13 +97,13 @@ struct MenuContentView: View {
                 }
                 .disabled(store.isFetching)
 
+                Spacer()
+
                 if case .needsLogin = store.remote {
                     IconButton(symbol: "person.crop.circle.badge.plus", help: "Log in") { store.logIn() }
                 } else {
                     IconButton(symbol: "rectangle.portrait.and.arrow.right", help: "Log out") { store.logOut() }
                 }
-
-                Spacer()
                 IconButton(symbol: "power", help: "Quit ClaudeGauge") { NSApplication.shared.terminate(nil) }
             }
             .font(.system(size: 15))
