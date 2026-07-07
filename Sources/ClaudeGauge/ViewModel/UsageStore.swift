@@ -16,6 +16,7 @@ final class UsageStore: ObservableObject {
     @Published private(set) var token: TokenUsage?     // local context
     @Published private(set) var limits: LimitUsage?    // remote session + weekly
     @Published private(set) var remote: RemoteState = .needsLogin
+    @Published private(set) var isFetching = false   // a remote fetch is in flight
 
     private let login = LoginController()
     private var localTimer: Timer?
@@ -52,8 +53,11 @@ final class UsageStore: ObservableObject {
             remote = .needsLogin
             return
         }
-        remote = .loading
+        // Keep the existing limits on screen; only show a placeholder on the very first load.
+        if limits == nil { remote = .loading }
+        isFetching = true
         Task {
+            defer { isFetching = false }
             do {
                 limits = try await ClaudeAPI.fetchUsage(sessionKey: session.sessionKey)
                 remote = .ok
@@ -62,7 +66,7 @@ final class UsageStore: ObservableObject {
                 limits = nil
                 remote = .needsLogin
             } catch {
-                remote = .error(short(error))
+                remote = .error(short(error))   // stale limits stay visible
             }
         }
     }
