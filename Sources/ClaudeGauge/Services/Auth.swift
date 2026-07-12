@@ -13,16 +13,15 @@ enum Auth {
     private static let account = "claude-session"
 
     static func load() -> Session? {
-        guard let json = Keychain.get(account),
-              let s = try? JSONDecoder().decode(Session.self, from: Data(json.utf8))
+        guard let data = Keychain.getData(account),
+              let s = try? JSONDecoder().decode(Session.self, from: data)
         else { return nil }
         return s
     }
 
     static func save(_ s: Session) {
-        guard let data = try? JSONEncoder().encode(s),
-              let json = String(data: data, encoding: .utf8) else { return }
-        Keychain.set(json, for: account)
+        guard let data = try? JSONEncoder().encode(s) else { return }
+        Keychain.setData(data, for: account)
     }
 
     static func clear() { Keychain.delete(account) }

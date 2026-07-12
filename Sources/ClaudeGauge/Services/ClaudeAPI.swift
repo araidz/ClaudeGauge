@@ -16,10 +16,15 @@ enum ClaudeAPI {
         "Origin": "https://claude.ai",
     ]
 
-    static func fetchUsage(sessionKey: String) async throws -> LimitUsage {
-        let orgId = try await resolveOrgId(sessionKey: sessionKey)
+    static func fetchUsage(sessionKey: String, cachedOrgId: String? = nil) async throws -> (usage: LimitUsage, orgId: String) {
+        let orgId: String
+        if let cachedOrgId {
+            orgId = cachedOrgId
+        } else {
+            orgId = try await resolveOrgId(sessionKey: sessionKey)
+        }
         let usage: UsageResponse = try await get("\(base)/api/organizations/\(orgId)/usage", sessionKey: sessionKey)
-        return usage.toLimitUsage()
+        return (usage.toLimitUsage(), orgId)
     }
 
     private static func resolveOrgId(sessionKey: String) async throws -> String {
@@ -39,6 +44,7 @@ enum ClaudeAPI {
     private static func get<T: Decodable>(_ urlString: String, sessionKey: String) async throws -> T {
         guard let url = URL(string: urlString) else { throw APIError.badResponse }
         var req = URLRequest(url: url)
+        req.timeoutInterval = 10
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
         req.setValue("sessionKey=\(sessionKey)", forHTTPHeaderField: "Cookie")
 
@@ -55,14 +61,21 @@ enum ClaudeAPI {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
-    // ISO8601 with or without fractional seconds.
-    fileprivate static func parseDate(_ s: String?) -> Date? {
-        guard let s else { return nil }
+    // ISO8601 with or without fractional seconds. Cached — formatters are expensive to init.
+    nonisolated(unsafe) private static let isoFrac: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = f.date(from: s) { return d }
+        return f
+    }()
+    nonisolated(unsafe) private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
-        return f.date(from: s)
+        return f
+    }()
+
+    fileprivate static func parseDate(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        return isoFrac.date(from: s) ?? iso.date(from: s)
     }
 }
 

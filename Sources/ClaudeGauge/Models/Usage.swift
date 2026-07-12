@@ -15,7 +15,7 @@ enum Countdown {
     static func short(to date: Date?, now: Date = Date()) -> String {
         guard let date else { return "—" }
         let secs = date.timeIntervalSince(now)
-        if secs <= 0 { return "soon" }
+        if secs <= 60 { return "soon" }
         let mins = Int(secs / 60), hrs = mins / 60, days = hrs / 24
         if days >= 1 { return "\(days)d \(hrs % 24)h" }
         if hrs >= 1 { return "\(hrs)h \(mins % 60)m" }

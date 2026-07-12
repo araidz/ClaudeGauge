@@ -34,6 +34,8 @@ enum SelfTest {
         assert(Countdown.short(to: now.addingTimeInterval(2 * 86400 + 3600), now: now) == "2d 1h", "days+hours")
         assert(Countdown.short(to: now.addingTimeInterval(600), now: now) == "10m", "minutes only")
         assert(Countdown.short(to: now.addingTimeInterval(-5), now: now) == "soon", "past -> soon")
+        assert(Countdown.short(to: now.addingTimeInterval(30), now: now) == "soon", "30s -> soon")
+        assert(Countdown.short(to: now.addingTimeInterval(61), now: now) == "1m", "61s -> 1m")
         assert(Countdown.short(to: nil) == "—", "nil -> dash")
 
         // 4. Dot gauge + color thresholds.
